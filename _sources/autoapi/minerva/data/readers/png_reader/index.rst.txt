@@ -15,7 +15,7 @@ Classes
 Module Contents
 ---------------
 
-.. py:class:: PNGReader(path, sort_method = None, delimiter = None, key_index = 0, reverse = False)
+.. py:class:: PNGReader(path, sort_method = None, delimiter = None, key_index = 0, reverse = False, filters = None)
 
    Bases: :py:obj:`minerva.data.readers.base_file_iterator.BaseFileIterator`
 
@@ -44,6 +44,11 @@ Module Contents
        index 0, then by the part at index 1, and so on. By default 0.
    reverse : bool, optional
        Whether to sort in reverse order, by default False.
+   filters: Optional[Union[List[str], str]]
+       An optional string or list of strings containing regular expressions
+       with which to filter files by their stems. Files that match at least
+       one pattern are kept, and the others are excluded. Defaults to None,
+       which means no files are excluded.
 
    Raises
    ------

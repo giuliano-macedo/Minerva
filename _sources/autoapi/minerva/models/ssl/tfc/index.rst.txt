@@ -15,7 +15,7 @@ Classes
 Module Contents
 ---------------
 
-.. py:class:: TFC_Model(input_channels, TS_length, num_classes = None, single_encoding_size = 128, backbone = None, pred_head = True, loss = None, learning_rate = 0.0003, transform = None, device = 'cuda', batch_size = 42, pipeline = 'both', time_encoder = None, frequency_encoder = None, time_projector = None, frequency_projector = None, train_metrics = None, val_metrics = None, test_metrics = None, batch_1_correction=False)
+.. py:class:: TFC_Model(input_channels, TS_length, num_classes = None, single_encoding_size = 128, backbone = None, pred_head = True, loss = None, learning_rate = 0.0003, transform = None, device = 'cuda', batch_size = 42, pipeline = 'both', time_encoder = None, frequency_encoder = None, time_projector = None, frequency_projector = None, train_metrics = None, val_metrics = None, test_metrics = None, batch_1_correction=False, jitter_ratio = 0.08, jitter_function = None)
 
    Bases: :py:obj:`lightning.LightningModule`
 
@@ -77,6 +77,11 @@ Module Contents
        If True, some parts of the architecture are adapted to
        work with batch size 1. Default is False, which means
        that the model is not adapted to work with batch size 1.
+   - jitter_ratio: float
+       The ratio of the jittering transformation. Default is 0.08.
+       This parameter is used in the TFC_Transforms class to apply data augmentation.
+   - jitter_function: Optional[callable]
+       A custom jittering function. If None, the default proportional jittering function is used.
 
 
    .. py:method:: _compute_metrics(y_hat, y, step_name)

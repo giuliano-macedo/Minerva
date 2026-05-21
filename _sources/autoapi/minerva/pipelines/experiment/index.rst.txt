@@ -10,6 +10,7 @@ Classes
 .. autoapisummary::
 
    minerva.pipelines.experiment.Experiment
+   minerva.pipelines.experiment.InstantiatedModel
    minerva.pipelines.experiment.ModelConfig
    minerva.pipelines.experiment.ModelInformation
    minerva.pipelines.experiment.ModelInstantiator
@@ -20,6 +21,7 @@ Functions
 
 .. autoapisummary::
 
+   minerva.pipelines.experiment.get_run_id
    minerva.pipelines.experiment.get_trainer
    minerva.pipelines.experiment.load_predictions
    minerva.pipelines.experiment.load_results
@@ -28,12 +30,14 @@ Functions
    minerva.pipelines.experiment.perform_train
    minerva.pipelines.experiment.save_predictions
    minerva.pipelines.experiment.save_results
+   minerva.pipelines.experiment.timestamp_now
+   minerva.pipelines.experiment.using_redirected_outputs
 
 
 Module Contents
 ---------------
 
-.. py:class:: Experiment(experiment_name, model_config, data_module, pretrained_backbone_ckpt_path = None, root_log_dir = './logs', execution_id = 0, checkpoint_metrics = None, max_epochs = 100, accelerator = 'gpu', devices = 1, strategy = 'auto', num_nodes = 1, limit_train_batches = None, limit_val_batches = None, limit_test_batches = None, limit_predict_batches = None, evaluation_metrics = None, per_sample_evaluation_metrics = None, seed = None, progress_bar_refresh_rate = 1, profiler = None, save_predictions = True, save_results = True, add_last_checkpoint = True)
+.. py:class:: Experiment(experiment_name, model_config, data_module, pretrained_backbone_ckpt_path = None, root_log_dir = './logs', execution_id = 0, checkpoint_metrics = None, max_epochs = 100, accelerator = 'gpu', devices = 1, strategy = 'auto', num_nodes = 1, limit_train_batches = None, limit_val_batches = None, limit_test_batches = None, limit_predict_batches = None, callbacks = None, evaluation_metrics = None, per_sample_evaluation_metrics = None, seed = None, progress_bar_refresh_rate = 1, profiler = None, save_predictions = False, save_results = True, add_last_checkpoint = True, log_outputs = True, _run_id = None)
 
    Bases: :py:obj:`minerva.pipelines.base.Pipeline`
 
@@ -165,13 +169,20 @@ Module Contents
        the `get_trainer` function. By default None.
    save_predictions : bool, optional
        If True, the predictions will be saved to the log directory. By
-       default True
+       default False.
    save_results : bool, optional
        If True, the results will be saved to the log directory. By
        default True
    add_last_checkpoint : bool, optional
        If True, the last checkpoint will be added to the list of checkpoint
        metrics. By default True.
+   log_outputs : bool, optional
+       If True, the standard output and error will be logged to files in the
+       log directory. By default True.
+   _run_id : Optional[str], optional
+       An internal run ID for the experiment. This is used to
+       differentiate between different runs of the same experiment. If
+       None, a timestamp will be used. By default None.
 
    Raises
    ------
@@ -207,7 +218,7 @@ Module Contents
    .. py:attribute:: _checkpoint_dir
 
 
-   .. py:method:: _evaluate_model(ckpts_to_evaluate = None, print_summary = True, debug = False)
+   .. py:method:: _evaluate_model(ckpts_to_evaluate = None, print_summary = True, debug = False, cached_execution = None)
 
 
    .. py:attribute:: _predictions_dir
@@ -232,6 +243,15 @@ Module Contents
       Any
           The result of the pipeline run.
 
+
+
+   .. py:attribute:: _run_id
+
+
+   .. py:attribute:: _stderr_path
+
+
+   .. py:attribute:: _stdout_path
 
 
    .. py:method:: _train_model(resume_from_ckpt = None, debug = False, print_summary = True)
@@ -262,6 +282,11 @@ Module Contents
 
    .. py:attribute:: accelerator
       :value: 'gpu'
+
+
+
+   .. py:attribute:: callbacks
+      :value: None
 
 
 
@@ -363,6 +388,11 @@ Module Contents
 
 
 
+   .. py:attribute:: log_outputs
+      :value: True
+
+
+
    .. py:attribute:: max_epochs
       :value: 100
 
@@ -429,8 +459,21 @@ Module Contents
    .. py:attribute:: root_log_dir
 
 
+   .. py:property:: run_id
+      :type: str
+
+
+      Returns the run ID of the experiment.
+
+      Returns
+      -------
+      str
+          The run ID of the experiment.
+
+
+
    .. py:attribute:: save_predictions
-      :value: True
+      :value: False
 
 
 
@@ -479,6 +522,79 @@ Module Contents
       Optional[Path]
           The path to the metrics file if it exists, otherwise None.
 
+
+
+.. py:class:: InstantiatedModel(model)
+
+   Bases: :py:obj:`ModelInstantiator`
+
+
+   Encapsulates a PyTorch Lightning model into a ModelInstantiator.
+
+   This class is used to wrap an existing instance of a PyTorch Lightning
+   model (L.LightningModule) into a ModelInstantiator interface. It allows
+   to use the model randomly initialized, but does not support
+   finetuning with a pretrained backbone.
+
+   Initialize the CachedModelInstantiator with a PyTorch Lightning model.
+
+   Parameters
+   ----------
+   model : L.LightningModule
+       The PyTorch Lightning model to be wrapped. This model should
+       already be defined and instantiated.
+
+
+   .. py:method:: create_model_and_load_backbone(backbone_checkpoint_path)
+
+      Create a model for finetuning with a pretrained backbone and a
+      new head (randomly initialized). This method should load the backbone
+      weights from the specified checkpoint and attach a freshly initialized
+      head for the downstream task. User must handle the logic to load the
+      backbone weights into the model's state dict.
+
+      Parameters
+      ----------
+      backbone_checkpoint_path : PathLike
+          Path to the checkpoint containing pretrained backbone weights. The
+          checkpoint must be compatible with the model architecture.
+
+      Returns
+      -------
+      L.LightningModule
+          The model ready for finetuning (pretrained backbone, new head).
+
+
+
+   .. py:method:: create_model_randomly_initialized()
+
+      Create a model with both backbone and head randomly initialized.
+
+
+
+   .. py:method:: load_model_from_checkpoint(checkpoint_path)
+
+      Load the full model (backbone and head) from a saved checkpoint.
+      Typically used for resuming training, evaluation, or inference when the
+      model must be restored in its entirety. In practice, the checkpoint
+      should be one created using `create_model_and_load_backbone` or
+      `create_model_randomly_initialized`.
+      The checkpoint must be compatible with the model architecture.
+
+      Parameters
+      ----------
+      checkpoint_path : PathLike
+          Path to the checkpoint file containing the full model state.
+
+      Returns
+      -------
+      L.LightningModule
+          A Lightning model fully restored from checkpoint, ready for
+          evaluation or inference.
+
+
+
+   .. py:attribute:: model
 
 
 .. py:class:: ModelConfig(instantiator, information)
@@ -720,7 +836,9 @@ Module Contents
 
 
 
-.. py:function:: get_trainer(log_dir, max_epochs = 100, limit_train_batches = None, limit_val_batches = None, limit_test_batches = None, limit_predict_batches = None, accelerator = 'auto', strategy = 'auto', devices = 'auto', num_nodes = 1, progress_bar_refresh_rate = 1, enable_logging = True, checkpoint_metrics = None, precision = '32-true', accumulate_grad_batches = 1, deterministic = False, benchmark = True, profiler = None, overfit_batches = 0.0, sync_batchnorm = False)
+.. py:function:: get_run_id()
+
+.. py:function:: get_trainer(log_dir, max_epochs = 100, limit_train_batches = None, limit_val_batches = None, limit_test_batches = None, limit_predict_batches = None, accelerator = 'auto', strategy = 'auto', devices = 'auto', num_nodes = 1, progress_bar_refresh_rate = 1, enable_logging = True, checkpoint_metrics = None, precision = '32-true', accumulate_grad_batches = 1, deterministic = False, benchmark = True, profiler = None, overfit_batches = 0.0, sync_batchnorm = False, callbacks = None)
 
    Creates and configures a PyTorch Lightning Trainer instance.
 
@@ -796,6 +914,10 @@ Module Contents
    sync_batchnorm : bool, default=False
        Synchronizes batch norm layers across devices during distributed
        training.
+
+   callbacks : list of L.Callback, optional
+       List of PyTorch Lightning callbacks to be used during training. Checkpointing
+       is enabled by default if `checkpoint_metrics` is provided.
 
    Returns
    -------
@@ -945,4 +1067,8 @@ Module Contents
    index : bool, optional
        Whether to save the index of the DataFrame, by default False
 
+
+.. py:function:: timestamp_now()
+
+.. py:function:: using_redirected_outputs(output_path, error_path, mode = 'a', ignore = False)
 

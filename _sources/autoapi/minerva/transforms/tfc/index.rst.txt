@@ -15,13 +15,22 @@ Classes
 Module Contents
 ---------------
 
-.. py:class:: TFC_Transforms
+.. py:class:: TFC_Transforms(jitter_ratio = 0.08, jitter_function = None)
 
    Bases: :py:obj:`minerva.transforms.transform._Transform`
 
 
    Transformations used in the TFC model.
    It consists of time and frequency domain data augmentation.
+
+   Initialize the TFC_Transforms class.
+
+   Parameters
+   ----------
+   - jitter_ratio: float
+       The ratio of the jittering transformation. Default is 0.08.
+   - jitter_function: Optional[callable]
+       A custom jittering function. If None, the default proportional jittering function is used.
 
 
    .. py:method:: DataTransform_FD(sample)
@@ -42,7 +51,7 @@ Module Contents
 
 
 
-   .. py:method:: DataTransform_TD(sample, jitter_ratio = 0.8)
+   .. py:method:: DataTransform_TD(sample, jitter_ratio = 0.08)
 
       Weak and strong augmentations.
       Consists of jittering and removing time components.
@@ -53,6 +62,8 @@ Module Contents
           The input data to be augmented
       - jitter_ratio: float
           The ratio of the jittering transformation
+      - jitter_function: Optional[function]
+          A custom jittering function. If None, the default jittering function is used.
 
       Returns
       -------
@@ -62,7 +73,7 @@ Module Contents
 
 
 
-   .. py:method:: __call__(x)
+   .. py:method:: __call__(x, jitter_ratio = None)
 
       Method that applies the transformations to the input data.
 
@@ -70,6 +81,8 @@ Module Contents
       ----------
       - x: Union[np.ndarray, torch.Tensor]
           The input data to be transformed
+      - jitter_ratio: Optional[float]
+          The ratio of the jittering transformation. If None, the default value is used.
 
       Returns
       -------
@@ -118,6 +131,14 @@ Module Contents
 
 
 
+   .. py:attribute:: jitter_operation
+
+
+   .. py:attribute:: jitter_ration
+      :value: 0.08
+
+
+
    .. py:method:: one_hot_encoding(X, n_values = None)
 
       One-hot encoding of the input data
@@ -133,6 +154,25 @@ Module Contents
       -------
       - np.ndarray
           The one-hot encoded data
+
+
+
+   .. py:method:: proportional_jitter(x, ratio = 0.08)
+
+      Proportional jittering of the input data.
+
+      Parameters
+      ----------
+      - x: np.ndarray
+          The input data to be augmented
+      - ratio: float
+          The ratio of the jittering transformation
+
+      Returns
+      -------
+      - np.ndarray
+          The data with proportional jittering applied
+
 
 
 

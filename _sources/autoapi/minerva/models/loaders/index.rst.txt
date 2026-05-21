@@ -90,7 +90,13 @@ Module Contents
    Bases: :py:obj:`wrapt.ObjectProxy`, :py:obj:`LoadableModule`
 
 
-   
+   A generic object proxy which forwards special methods as needed.
+   For backwards compatibility this class adds support for `__iter__()`. If
+   you don't need backward compatibility for `__iter__()` support then it is
+   preferable to use `BaseObjectProxy` directly. If you want automatic
+   support for special dunder methods for callables, iterators, and async,
+   then use `AutoObjectProxy`.
+
    Load a model from a checkpoint file and wrap it in a FromPretrained
    object. The FromPretrained object acts as a proxy to the model, allowing
    to call it as if it was the original model. All the attributes and

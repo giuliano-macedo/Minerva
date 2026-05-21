@@ -27,9 +27,11 @@ Module Contents
 
 .. py:function:: get_2d_sincos_pos_embed(embed_dim, grid_size, cls_token=False)
 
-   grid_size: int of the grid height and width
+   grid_size: int or tuple/list of (grid_h, grid_w)
+       - If int, the grid is square
+       - If tuple/list, grid_h and grid_w define a rectangular grid
    return:
-   pos_embed: [grid_size*grid_size, embed_dim] or [1+grid_size*grid_size, embed_dim] (w/ or w/o cls_token)
+       pos_embed: [grid_h*grid_w, embed_dim] or [1+grid_h*grid_w, embed_dim] (w/ cls_token)
 
 
 .. py:function:: get_2d_sincos_pos_embed_from_grid(embed_dim, grid)

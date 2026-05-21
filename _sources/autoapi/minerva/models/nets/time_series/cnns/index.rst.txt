@@ -173,6 +173,7 @@ Module Contents
        import torch.nn as nn
        import torch.nn.functional as F
 
+
        class Model(nn.Module):
            def __init__(self) -> None:
                super().__init__()
@@ -340,8 +341,6 @@ Module Contents
 
 
    .. py:attribute:: pad_at
-      :value: (3,)
-
 
 
 .. py:class:: CNN_HaEtAl_2D_Backbone(input_shape, pad_at = 3, first_kernel_size = 4)
@@ -358,6 +357,7 @@ Module Contents
 
        import torch.nn as nn
        import torch.nn.functional as F
+
 
        class Model(nn.Module):
            def __init__(self) -> None:
@@ -636,7 +636,7 @@ Module Contents
 
 
 
-.. py:class:: CNN_PF_Backbone(in_channels = 1, pad_at = 3, out_channels = 16, include_middle = False, permute = False, flatten = False)
+.. py:class:: CNN_PF_Backbone(in_channels = 1, pad_at = 3, out_channels = 16, include_middle = False, permute = False, flatten = False, shared_part_out_channels = 64, shared_part_stride = (1, 1))
 
    Bases: :py:obj:`torch.nn.Module`
 
@@ -650,6 +650,7 @@ Module Contents
 
        import torch.nn as nn
        import torch.nn.functional as F
+
 
        class Model(nn.Module):
            def __init__(self) -> None:
@@ -739,6 +740,7 @@ Module Contents
 
        import torch.nn as nn
        import torch.nn.functional as F
+
 
        class Model(nn.Module):
            def __init__(self) -> None:

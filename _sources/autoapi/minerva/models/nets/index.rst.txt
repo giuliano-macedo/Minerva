@@ -15,6 +15,8 @@ Submodules
    /autoapi/minerva/models/nets/conv_autoencoders_encoders/index
    /autoapi/minerva/models/nets/cpc_networks/index
    /autoapi/minerva/models/nets/dcnn/index
+   /autoapi/minerva/models/nets/diet_linear/index
+   /autoapi/minerva/models/nets/lfr_har_architectures/index
    /autoapi/minerva/models/nets/mlp/index
    /autoapi/minerva/models/nets/siamese_network_wrapper/index
    /autoapi/minerva/models/nets/tfc/index
@@ -37,7 +39,7 @@ Classes
 Package Contents
 ----------------
 
-.. py:class:: DeepLabV3(backbone = None, pred_head = None, loss_fn = None, learning_rate = 0.001, num_classes = 6, train_metrics = None, val_metrics = None, test_metrics = None, optimizer = torch.optim.Adam, optimizer_kwargs = None, lr_scheduler = None, lr_scheduler_kwargs = None, output_shape = None)
+.. py:class:: DeepLabV3(backbone = None, pred_head = None, loss_fn = None, learning_rate = 0.001, num_classes = 6, pretrained = False, weights_path = None, train_metrics = None, val_metrics = None, test_metrics = None, optimizer = torch.optim.Adam, optimizer_kwargs = None, lr_scheduler = None, lr_scheduler_kwargs = None, output_shape = None, freeze_backbone = False, interpolate_mode = 'bilinear', flatten = False, loss_squeeze = True, loss_long = True)
 
    Bases: :py:obj:`minerva.models.nets.base.SimpleSupervisedModel`
 
@@ -66,6 +68,11 @@ Package Contents
        The learning rate for the optimizer. Defaults to 0.001.
    num_classes: int
        The number of classes for prediction. Defaults to 6.
+   pretrained: bool
+       Whether to use pretrained weights. Defaults to False.
+   weights_path: Optional[str]
+       Path to local pretrained weights file. If provided with pretrained=True,
+       loads weights from this path instead of downloading. Defaults to None.
    train_metrics: Optional[Dict[str, Metric]]
        The metrics to be computed during training. Defaults to None.
    val_metrics: Optional[Dict[str, Metric]]
@@ -90,44 +97,77 @@ Package Contents
        the same as the input shape. Defaults to None. This is useful for
        models that require a specific output shape, that is different from
        the input shape.
+   freeze_backbone: bool
+       Whether to freeze the backbone weights during training. Defaults to
+       False.
+   interpolate_mode: Optional[str]
+       The interpolation mode to use when upscaling the output to the
+       desired output shape. Defaults to "bilinear". Other options include
+       "nearest", "bicubic", etc. See PyTorch documentation for
+       `torch.nn.functional.interpolate` for all options. Use None to
+       disable upscaling.
+   flatten: bool
+       Whether to flatten the output of the backbone before passing it to
+       the prediction head. Defaults to False. Set to True for classification
+       tasks where the prediction head is a fully connected layer.
+   loss_squeeze: bool
+       Whether to squeeze the target tensor in the loss function. Defaults
+       to True. This is useful for segmentation tasks where the target tensor
+       has a singleton channel dimension (e.g., shape (B, 1, H, W)) and the
+       loss function expects shape (B, H, W).
+   loss_long: bool
+       Whether to convert the target tensor to long type in the loss
+       function. Defaults to True. This is useful for classification tasks
+       where the target tensor is of integer type.
+
 
 
    .. py:method:: _loss_func(y_hat, y)
 
-      Calculate the loss between the output and the input data.
+      Computes the loss between predictions and ground truth.
 
       Parameters
       ----------
-      y_hat : torch.Tensor
-          The output data from the forward pass.
-      y : torch.Tensor
-          The input data/label.
-
-      Returns
-      -------
-      torch.Tensor
-          The loss value.
+      y_hat : Tensor
+          Predicted tensor of shape (batch_size, num_classes, height, width)
+      y : Tensor
+          Ground truth tensor of shape (batch_size, 1, height, width)
 
 
 
    .. py:method:: forward(x)
 
-      Perform a forward pass with the input data on the backbone model.
+      Performs the forward pass of the DeepLabV3 model.
 
       Parameters
       ----------
-      x : torch.Tensor
-          The input data.
+      x : Tensor
+          Input tensor of shape (batch_size, channels, height, width)
 
       Returns
       -------
-      torch.Tensor
-          The output data from the forward pass.
+      Tensor
+          Output tensor of shape (batch_size, num_classes, height, width)
+
+
+
+   .. py:attribute:: interpolate_mode
+      :value: 'bilinear'
+
+
+
+   .. py:attribute:: loss_long
+      :value: True
 
 
 
    .. py:attribute:: output_shape
       :value: None
+
+
+
+   .. py:attribute:: squeeze_loss
+      :value: True
 
 
 
@@ -186,119 +226,214 @@ Package Contents
    Initialize internal Module state, shared by both nn.Module and ScriptModule.
 
 
-.. py:class:: SETR_PUP(image_size = 512, patch_size = 16, num_layers = 24, num_heads = 16, hidden_dim = 1024, mlp_dim = 4096, encoder_dropout = 0.1, num_classes = 1000, norm_layer = None, decoder_channels = 256, num_convs = 4, up_scale = 2, kernel_size = 3, align_corners = False, decoder_dropout = 0.1, conv_norm = None, conv_act = None, interpolate_mode = 'bilinear', loss_fn = None, optimizer_type = None, optimizer_params = None, train_metrics = None, val_metrics = None, test_metrics = None, aux_output = True, aux_output_layers = None, aux_weights = None, load_backbone_path = None, freeze_backbone_on_load = True, learning_rate = 0.001, loss_weights = None, original_resolution = None, head_lr_factor = 1.0, test_engine = None)
+.. py:class:: SETR_PUP(original_resolution = None, img_size = (512, 512), patch_size = 16, in_channels = 3, embed_dims = 1024, num_layers = 24, num_heads = 16, out_indices = (9, 14, 19, 23), encoder_stride = None, patch_norm = False, dilatation = 1, bias = True, padding_type = 'corner', mlp_ratio = 4, attn_drop_rate = 0.0, drop_path_rate = 0.0, num_fcs = 2, qkv_bias = True, output_cls_token = False, act_type = nn.GELU, with_cp = False, encoder_dropout = 0.0, encoder_norm_type = nn.LayerNorm, dropout_type = MMDropPath, cls_token = True, interpolate_mode = 'bilinear', act_params = None, dropout_params = None, encoder_norm_params = None, decoder_channels = 256, decoder_in_index = 3, num_classes = 6, decoder_dropout = 0.0, decoder_norm_type = nn.SyncBatchNorm, decoder_num_convs = 4, decoder_up_scale = 2, decoder_kernel_size = 3, decoder_align_corners = False, decoder_norm_params = None, aux_heads_in_index = (0, 1, 2), aux_head_num_convs = 2, aux_head_up_scale = 4, aux_weights = None, loss_fn = None, optimizer = Adam, optimizer_kwargs = None, train_metrics = None, val_metrics = None, test_metrics = None, freeze_backbone = False, learning_rate = 0.001, loss_weights = None, lr_scheduler = None, lr_scheduler_kwargs = None, head_lr_factor = 1.0, use_sliding_inference = True, sliding_window_stride = (341, 341))
 
-   Bases: :py:obj:`lightning.pytorch.LightningModule`
+   Bases: :py:obj:`minerva.models.nets.base.SimpleSupervisedModel`
 
 
-   SET-R model with PUP head for image segmentation.
+   A modular Lightning model wrapper for supervised learning tasks.
 
-   Methods
-   -------
-   forward(x: torch.Tensor) -> torch.Tensor
-       Forward pass of the model.
-   _compute_metrics(y_hat: torch.Tensor, y: torch.Tensor, step_name: str)
-       Compute metrics for the given step.
-   _loss_func(y_hat: Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]], y: torch.Tensor) -> torch.Tensor
-       Calculate the loss between the output and the input data.
-   _single_step(batch: torch.Tensor, batch_idx: int, step_name: str)
-       Perform a single step of the training/validation loop.
-   training_step(batch: torch.Tensor, batch_idx: int)
-       Perform a single training step.
-   validation_step(batch: torch.Tensor, batch_idx: int)
-       Perform a single validation step.
-   test_step(batch: torch.Tensor, batch_idx: int)
-       Perform a single test step.
-   predict_step(batch: torch.Tensor, batch_idx: int, dataloader_idx: Optional[int] = None)
-       Perform a single prediction step.
-   load_backbone(path: str, freeze: bool = False)
-       Load a pre-trained backbone.
-   configure_optimizers()
-       Configure the optimizer for the model.
-   create_from_dict(config: Dict) -> "SETR_PUP"
-       Create an instance of SETR_PUP from a configuration dictionary.
+   This class enables the construction of supervised models by combining a
+   backbone (feature extractor), an optional adapter, and a fully connected
+   (FC) head. It provides a clean interface for setting up custom training,
+   validation, and testing pipelines with pluggable loss functions, metrics,
+   optimizers, and learning rate schedulers.
 
-   Initialize the SETR model with Progressive Upsampling Head.
+   The architecture is structured as follows:
+
+       +------------------+
+       |  Backbone Model  |
+       +------------------+
+               |
+               v
+       +------------------------+
+       |  Adapter (Optional)    |
+       +------------------------+
+               |
+        (Flatten if needed)
+               v
+       +------------------------+
+       |  Fully Connected Head  |
+       +------------------------+
+               |
+               v
+       +------------------+
+       |  Loss Function   |
+       +------------------+
+
+   Training and validation steps comprise the following steps:
+
+   1. Forward pass input through the backbone.
+   2. Pass through adapter (if provided).
+   3. Flatten the output (if `flatten` is True) before the FC head.
+   4. Forward through the FC head.
+   5. Compute loss with respect to targets.
+   6. Backpropagate and update parameters.
+   7. Compute metrics and log them.
+   8. Return loss. `train_loss`, `val_loss`, and `test_loss` are always
+      logged, along with any additional metrics specified in the
+      `train_metrics`, `val_metrics`, and `test_metrics` dictionaries.
+
+   This wrapper is especially useful to quickly set up supervised models for
+   various tasks, such as image classification, object detection, and
+   segmentation. It is designed to be flexible and extensible, allowing users
+   to easily swap out components like the backbone, adapter, and FC head as
+   needed. The model is built with a focus on simplicity and modularity, making
+   it easy to adapt to different use cases and requirements.
+   The model is designed to be used with PyTorch Lightning and is compatible
+   with its training loop.
+
+   **Note**: For more complex architectures that does not follow the above
+   structure should not inherit from this class.
+
+   **Note**: Input batches must be tuples (input_tensor, target_tensor).
+
+   LightningModule implementation for SETR_PUP (SEgmentation TRansformer with Progressive UPsampling).
 
    Parameters
    ----------
-   image_size : Union[int, Tuple[int, int]], optional
-       Size of the input image, by default 512.
-   patch_size : int, optional
-       Size of the patches to be extracted from the input image, by
-       default 16.
-   num_layers : int, optional
-       Number of transformer layers, by default 24.
-   num_heads : int, optional
-       Number of attention heads, by default 16.
-   hidden_dim : int, optional
-       Dimension of the hidden layer, by default 1024.
-   mlp_dim : int, optional
-       Dimension of the MLP layer, by default 4096.
-   encoder_dropout : float, optional
-       Dropout rate for the encoder, by default 0.1.
-   num_classes : int, optional
-       Number of output classes, by default 1000.
-   norm_layer : Optional[nn.Module], optional
-       Normalization layer, by default None.
-   decoder_channels : int, optional
-       Number of channels in the decoder, by default 256.
-   num_convs : int, optional
-       Number of convolutional layers in the decoder, by default 4.
-   up_scale : int, optional
-       Upscaling factor for the decoder, by default 2.
-   kernel_size : int, optional
-       Kernel size for the convolutional layers, by default 3.
-   align_corners : bool, optional
-       Whether to align corners when interpolating, by default False.
-   decoder_dropout : float, optional
-       Dropout rate for the decoder, by default 0.1.
-   conv_norm : Optional[nn.Module], optional
-       Normalization layer for the convolutional layers, by default None.
-   conv_act : Optional[nn.Module], optional
-       Activation function for the convolutional layers, by default None.
-   interpolate_mode : str, optional
-       Interpolation mode, by default "bilinear".
-   loss_fn : Optional[nn.Module], optional
-       Loss function, when None defaults to nn.CrossEntropyLoss, by
-       default None.
-   optimizer_type : Optional[type], optional
-       Type of optimizer, by default None.
-   optimizer_params : Optional[Dict], optional
-       Parameters for the optimizer, by default None.
-   train_metrics : Optional[Dict[str, Metric]], optional
-       Metrics for training, by default None.
-   val_metrics : Optional[Dict[str, Metric]], optional
-       Metrics for validation, by default None.
-   test_metrics : Optional[Dict[str, Metric]], optional
-       Metrics for testing, by default None.
-   aux_output : bool, optional
-       Whether to use auxiliary outputs, by default True.
-   aux_output_layers : list[int], optional
-       Layers for auxiliary outputs, when None it defaults to [9, 14, 19].
-   aux_weights : list[float], optional
-       Weights for auxiliary outputs, when None it defaults [0.3, 0.3, 0.3].
-   load_backbone_path : Optional[str], optional
-       Path to load the backbone model, by default None.
-   freeze_backbone_on_load : bool, optional
-       Whether to freeze the backbone model on load, by default True.
-   learning_rate : float, optional
-       Learning rate, by default 1e-3.
-   loss_weights : Optional[list[float]], optional
-       Weights for the loss function, by default None.
-   original_resolution : Optional[Tuple[int, int]], optional
-       The original resolution of the input image in the pre-training
-       weights. When None, positional embeddings will not be interpolated.
-       Defaults to None.
-   head_lr_factor : float, optional
-       Learning rate factor for the head. used if you need different
-       learning rates for backbone and prediction head, by default 1.0.
-   test_engine : Optional[_Engine], optional
-       Engine used for test and validation steps. When None, behavior of
-       all steps, training, testing and validation is the same, by default None.
+   original_resolution : tuple
+       Resolution of the original images used to pretrain the backbone.
+   img_size : tuple
+       Input image size (height, width) used during training and patch embedding.
+   patch_size : int
+       Size of each image patch extracted in the ViT encoder.
+   in_channels : int
+       Number of input channels (usually 3 for RGB).
+   embed_dims : int
+       Embedding dimension for each patch.
+   num_layers : int
+       Number of transformer encoder layers.
+   num_heads : int
+       Number of attention heads in each transformer layer.
+   out_indices : tuple, optional
+       Indices of the encoder layers to use as features for decoding.
+   encoder_stride : int
+       Stride used in patch embedding.
+   patch_norm : bool
+       Whether to apply normalization to patch embeddings.
+   dilatation : int
+       Dilation factor for patch embedding.
+   bias : bool
+       Whether to include bias in the projection layers.
+   padding_type : str
+       Padding mode used in patch embedding ("same" or "corner").
+   mlp_ratio : int
+       Expansion ratio for the MLP block inside transformer layers.
+   attn_drop_rate : float
+       Dropout rate applied to attention weights.
+   drop_path_rate : float
+       Probability of dropping entire residual paths (stochastic depth).
+   num_fcs : int
+       Number of linear layers in the feed-forward MLP of the transformer.
+   qkv_bias : bool
+       Whether to include bias in QKV projections.
+   output_cls_token : bool
+       Whether to include class token in encoder output.
+   act_type : type
+       Activation function class to use (e.g., nn.GELU).
+   with_cp : bool
+       Whether to enable checkpointing to save memory.
+   encoder_dropout : float
+       Dropout rate after positional embedding in the encoder.
+   encoder_norm_type : type
+       Normalization type used in the encoder.
+   dropout_type : type
+       Type of stochastic path dropout layer.
+   cls_token : bool
+       Whether to use a class token in the ViT.
+   interpolate_mode : str
+       Interpolation mode used for resizing positional embeddings.
+   act_params : dict, optional
+       Additional parameters for the activation function.
+   dropout_params : dict, optional
+       Additional parameters for the dropout layer.
+   encoder_norm_params : dict, optional
+       Additional parameters for the encoder normalization layer.
+
+   decoder_channels : int
+       Number of channels in intermediate layers of the decoder.
+   decoder_in_index : int
+       Index into encoder outputs to be used as decoder input.
+   num_classes : int
+       Number of segmentation classes.
+   decoder_dropout : float
+       Dropout probability in the decoder.
+   decoder_norm_type : type
+       Type of normalization in decoder conv blocks.
+   decoder_num_convs : int
+       Number of conv+upsample blocks in the decoder.
+   decoder_up_scale : int
+       Upsample scale factor for decoder blocks.
+   decoder_kernel_size : int
+       Convolution kernel size in decoder blocks.
+   decoder_align_corners : bool
+       Whether to align corners when using bilinear interpolation.
+   decoder_norm_params : dict, optional
+       Additional arguments for decoder normalization.
+
+   aux_heads_in_index : tuple of int
+       Indices of encoder layers to feed into each auxiliary decoder head.
+   aux_head_num_convs : int
+       Number of conv blocks in each auxiliary head.
+   aux_head_up_scale : int
+       Upsample factor for auxiliary heads.
+
+   aux_weights : list of float, optional
+       Weights for auxiliary losses [aux1, aux2, aux3].
+   loss_fn : nn.Module, optional
+       Loss function module (defaults to CrossEntropy).
+   optimizer_type : type, optional
+       Optimizer class (e.g., torch.optim.Adam).
+   optimizer_params : dict, optional
+       Parameters to pass to the optimizer.
+   train_metrics : dict, optional
+       Dictionary of training metrics.
+   val_metrics : dict, optional
+       Dictionary of validation metrics.
+   test_metrics : dict, optional
+       Dictionary of test metrics.
+   learning_rate : float
+       Learning rate for training.
+   loss_weights : list of float, optional
+       Class-wise weights for the loss function.
+   head_lr_factor : float
+       Learning rate multiplier for decoder heads.
+   lr_scheduler : type, optional
+       Learning rate scheduler class to be instantiated. By default, it is
+       set to None, which means no scheduler will be used. Should be a
+       subclass of `torch.optim.lr_scheduler.LRScheduler` (e.g.,
+       `torch.optim.lr_scheduler.StepLR`).
+   lr_scheduler_kwargs : dict, optional
+       Additional kwargs passed to the scheduler constructor.
+   use_sliding_inference : bool
+       Whether to use sliding window inference for large images on validation and test.
+   sliding_window_stride : tuple of int
+       Stride for sliding window inference (height, width).
 
 
    .. py:method:: _compute_metrics(y_hat, y, step_name)
+
+      Calculate the metrics for the given step.
+
+      Parameters
+      ----------
+      y_hat : torch.Tensor
+          The output data from the forward pass.
+      y : torch.Tensor
+          The input data/label.
+      step_name : str
+          Name of the step. It will be used to get the metrics from the
+          `self.metrics` attribute.
+
+      Returns
+      -------
+      Dict[str, torch.Tensor]
+          A dictionary with the metrics values.
+
+
+
+   .. py:method:: _eval_step_with_slide(batch, step_name)
 
 
    .. py:method:: _loss_func(y_hat, y)
@@ -319,24 +454,19 @@ Package Contents
 
 
 
-   .. py:method:: _single_step(batch, batch_idx, step_name)
+   .. py:method:: _slide_inference(image, crop_size=(512, 512), stride=(341, 341), ori_shape = None)
 
-      Perform a single step of the training/validation loop.
+      Realiza inferência por janelamento (sliding window) com reconstrução e resize final opcional.
 
-      Parameters
-      ----------
-      batch : torch.Tensor
-          The input data.
-      batch_idx : int
-          The index of the batch.
-      step_name : str
-          The name of the step, either "train" or "val".
 
-      Returns
-      -------
-      torch.Tensor
-          The loss value.
 
+   .. py:attribute:: aux_head1
+
+
+   .. py:attribute:: aux_head2
+
+
+   .. py:attribute:: aux_head3
 
 
    .. py:attribute:: aux_weights
@@ -452,17 +582,29 @@ Package Contents
 
 
 
+   .. py:attribute:: decoder_num_classes
+      :value: 6
+
+
+
+   .. py:attribute:: encoder_out_indices
+      :value: (9, 14, 19, 23)
+
+
+
    .. py:method:: forward(x)
 
-      Same as :meth:`torch.nn.Module.forward`.
+      Perform a forward pass with the input data on the backbone model.
 
-      Args:
-          *args: Whatever you decide to pass into the forward method.
-          **kwargs: Keyword arguments are also possible.
+      Parameters
+      ----------
+      x : torch.Tensor
+          The input data.
 
-      Return:
-          Your model's output
-
+      Returns
+      -------
+      torch.Tensor
+          The output data from the forward pass.
 
 
 
@@ -471,32 +613,19 @@ Package Contents
 
 
 
-   .. py:attribute:: learning_rate
-      :value: 0.001
+   .. py:attribute:: img_size
+      :value: (512, 512)
 
 
 
    .. py:method:: load_backbone(path, freeze = False)
 
+      Loads pretrained ViT backbone optionally freezing its weights.
 
-   .. py:attribute:: loss_fn
-      :value: None
-
-
-
-   .. py:attribute:: metrics
-
-
-   .. py:attribute:: model
 
 
    .. py:attribute:: num_classes
-      :value: 1000
-
-
-
-   .. py:attribute:: optimizer_type
-      :value: None
+      :value: 6
 
 
 
@@ -536,11 +665,6 @@ Package Contents
           trainer = Trainer(accelerator="gpu", devices=2)
           predictions = trainer.predict(model, dm)
 
-
-
-
-   .. py:attribute:: test_engine
-      :value: None
 
 
 
@@ -600,7 +724,22 @@ Package Contents
           # CASE 2: multiple test dataloaders
           def test_step(self, batch, batch_idx, dataloader_idx=0):
               # dataloader_idx tells you which dataset this is.
-              ...
+              x, y = batch
+
+              # implement your own
+              out = self(x)
+
+              if dataloader_idx == 0:
+                  loss = self.loss0(out, y)
+              else:
+                  loss = self.loss1(out, y)
+
+              # calculate acc
+              labels_hat = torch.argmax(out, dim=1)
+              acc = torch.sum(y == labels_hat).item() / (len(y) * 1.0)
+
+              # log the outputs separately for each dataloader
+              self.log_dict({f"test_loss_{dataloader_idx}": loss, f"test_acc_{dataloader_idx}": acc})
 
       Note:
           If you don't need to test you don't need to implement this method.
@@ -670,6 +809,11 @@ Package Contents
 
 
 
+   .. py:attribute:: use_sliding_inference
+      :value: True
+
+
+
    .. py:method:: validation_step(batch, batch_idx)
 
       Operates on a single batch of data from the validation set. In this step you'd might generate examples or
@@ -726,7 +870,22 @@ Package Contents
           # CASE 2: multiple validation dataloaders
           def validation_step(self, batch, batch_idx, dataloader_idx=0):
               # dataloader_idx tells you which dataset this is.
-              ...
+              x, y = batch
+
+              # implement your own
+              out = self(x)
+
+              if dataloader_idx == 0:
+                  loss = self.loss0(out, y)
+              else:
+                  loss = self.loss1(out, y)
+
+              # calculate acc
+              labels_hat = torch.argmax(out, dim=1)
+              acc = torch.sum(y == labels_hat).item() / (len(y) * 1.0)
+
+              # log the outputs separately for each dataloader
+              self.log_dict({f"val_loss_{dataloader_idx}": loss, f"val_acc_{dataloader_idx}": acc})
 
       Note:
           If you don't need to validate you don't need to implement this method.
@@ -876,6 +1035,13 @@ Package Contents
       -------
       torch.Tensor
           The loss value.
+
+
+
+   .. py:method:: _set_trainable_params()
+
+      Freeze the parameters of the backbone model if `freeze_backbone` is
+      set to True.
 
 
 
@@ -1164,7 +1330,22 @@ Package Contents
           # CASE 2: multiple test dataloaders
           def test_step(self, batch, batch_idx, dataloader_idx=0):
               # dataloader_idx tells you which dataset this is.
-              ...
+              x, y = batch
+
+              # implement your own
+              out = self(x)
+
+              if dataloader_idx == 0:
+                  loss = self.loss0(out, y)
+              else:
+                  loss = self.loss1(out, y)
+
+              # calculate acc
+              labels_hat = torch.argmax(out, dim=1)
+              acc = torch.sum(y == labels_hat).item() / (len(y) * 1.0)
+
+              # log the outputs separately for each dataloader
+              self.log_dict({f"test_loss_{dataloader_idx}": loss, f"test_acc_{dataloader_idx}": acc})
 
       Note:
           If you don't need to test you don't need to implement this method.
@@ -1290,7 +1471,22 @@ Package Contents
           # CASE 2: multiple validation dataloaders
           def validation_step(self, batch, batch_idx, dataloader_idx=0):
               # dataloader_idx tells you which dataset this is.
-              ...
+              x, y = batch
+
+              # implement your own
+              out = self(x)
+
+              if dataloader_idx == 0:
+                  loss = self.loss0(out, y)
+              else:
+                  loss = self.loss1(out, y)
+
+              # calculate acc
+              labels_hat = torch.argmax(out, dim=1)
+              acc = torch.sum(y == labels_hat).item() / (len(y) * 1.0)
+
+              # log the outputs separately for each dataloader
+              self.log_dict({f"val_loss_{dataloader_idx}": loss, f"val_acc_{dataloader_idx}": acc})
 
       Note:
           If you don't need to validate you don't need to implement this method.

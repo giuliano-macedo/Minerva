@@ -11,6 +11,11 @@ Submodules
    :maxdepth: 1
 
    /autoapi/minerva/data/datasets/base/index
+   /autoapi/minerva/data/datasets/binary_tree_subset/index
+   /autoapi/minerva/data/datasets/context_dataset/index
+   /autoapi/minerva/data/datasets/har_rodrigues_24/index
+   /autoapi/minerva/data/datasets/har_xu_23/index
+   /autoapi/minerva/data/datasets/series_dataset/index
 
 
 Classes
@@ -59,7 +64,9 @@ Package Contents
        -   A list of transforms, in which case each transform is applied
            to the corresponding reader. That is, the first transform is
            applied to the first reader, the second transform is applied to
-           the second reader, and so on.
+           the second reader, and so on. The transform can also be None for
+           some readers, in which case no transform is applied to that
+           reader's data.
    return_single : bool, optional
        If True, the __getitem__ method will return a single sample  when
        a single reader is used. This is useful for unsupervised datasets,

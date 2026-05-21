@@ -11,6 +11,8 @@ Submodules
    :maxdepth: 1
 
    /autoapi/minerva/transforms/activity_image/index
+   /autoapi/minerva/transforms/context_transform/index
+   /autoapi/minerva/transforms/moco_augmentations/index
    /autoapi/minerva/transforms/random_transform/index
    /autoapi/minerva/transforms/split_transform/index
    /autoapi/minerva/transforms/tfc/index
@@ -26,7 +28,6 @@ Classes
    minerva.transforms.ColorJitter
    minerva.transforms.ContrastiveTransform
    minerva.transforms.Crop
-   minerva.transforms.EmptyTransform
    minerva.transforms.Flip
    minerva.transforms.Gradient
    minerva.transforms.GrayScale
@@ -155,6 +156,19 @@ Package Contents
    perform the transformation. The __call__ method should be overridden in
    subclasses to define the transformation logic.
 
+   A transformation wrapper that applies the same transform twice to create contrastive pairs.
+
+   This transform is commonly used in contrastive learning approaches where you need two
+   different augmented versions of the same input. It takes a base transformation and applies
+   it twice independently to the same input, potentially producing different results if the
+   underlying transform includes randomness.
+
+   Parameters
+   ----------
+   transform : _Transform
+       The base transformation to be applied twice. This should be a callable that takes
+       a numpy array and returns a transformed numpy array.
+
 
    .. py:method:: __call__(x)
 
@@ -169,19 +183,14 @@ Package Contents
    .. py:attribute:: transform
 
 
-.. py:class:: Crop(output_size, pad_mode = 'reflect', coords = (0, 0))
+.. py:class:: Crop(output_size, pad_mode = 'reflect', coords = (0, 0), bbox = None)
 
    Bases: :py:obj:`_Transform`
 
 
-   This class is a base class for all transforms. Transforms is just a
-   fancy word for a function that takes an input and returns an output. The
-   input and output can be anything. However, transforms operates over a
-   single sample of data and does not require any additional information to
-   perform the transformation. The __call__ method should be overridden in
-   subclasses to define the transformation logic.
+   Crop an image to a given output size, with optional padding and bounding-box support.
 
-   Crops the input image to a specified output size, with optional padding if needed.
+   Expects inputs in CHW (C, H, W) or 2D (H, W) format.
 
    Parameters
    ----------
@@ -189,25 +198,42 @@ Package Contents
        Desired output size as (height, width).
    pad_mode : str, optional
        Padding mode used if output size is larger than input size. Defaults to 'reflect'.
-   coords : Tuple[int, int], optional
-       Top-left coordinates for the crop box.
+       Valid modes include: 'constant', 'edge', 'linear_ramp', 'maximum', 'mean', 'median',
+       'minimum', 'reflect', 'symmetric', 'wrap', 'empty'.
+   coords : Tuple[float, float], optional
+       Top-left coordinates for the crop box as (row, col).
        Values must go from 0 to 1 indicating the relative position on where the
-       new top-left corner can be set, taking in consideration the new size
-
-   Returns
-   -------
-   np.ndarray
-       Cropped image, padded as necessary.
+       new top-left corner can be set, taking in consideration the new size.
+       Defaults to (0, 0) which corresponds to the top-left corner of the image.
+   bbox : Optional[Tuple[int, int, int, int]], optional
+       If provided, crops the image to the bounding box defined by (y1, y2, x1, x2).
+       If this parameter is set, the `coords` parameter is ignored. Defaults to None.
 
 
    .. py:method:: __call__(image)
 
-      Implement the transformation logic in this method. Usually, the
-      transformation is applied on a single sample of data.
+      Crop the image to the configured output size.
+
+      Parameters
+      ----------
+      image : np.ndarray
+          Input array in CHW (C, H, W) or 2D (H, W) format.
+
+      Returns
+      -------
+      np.ndarray
+          Cropped array. Shape is (C, new_h, new_w) for 3D input or
+          (new_h, new_w) for 2D input. Padded symmetrically if the
+          output size exceeds the input size.
 
 
 
    .. py:method:: __str__()
+
+
+   .. py:attribute:: bbox
+      :value: None
+
 
 
    .. py:attribute:: coords
@@ -223,22 +249,7 @@ Package Contents
 
 
 
-.. py:class:: EmptyTransform
-
-   Bases: :py:obj:`minerva.transforms.transform._Transform`
-
-
-   A transform that does nothing to the input data.
-
-
-   .. py:method:: __call__(data)
-
-      Implement the transformation logic in this method. Usually, the
-      transformation is applied on a single sample of data.
-
-
-
-.. py:class:: Flip(axis = 0)
+.. py:class:: Flip(axis = 1)
 
    Bases: :py:obj:`_Transform`
 
@@ -250,7 +261,7 @@ Package Contents
    Parameters
    ----------
    axis : int | List[int], optional
-       One or more axis to flip the input data along, by default 0.
+       One or more axis to flip the input data along, by default 1 (horizontal).
        If a list of axis is provided, the input data is flipped along all the specified axis in the order they are provided.
 
 
@@ -267,7 +278,7 @@ Package Contents
 
 
    .. py:attribute:: axis
-      :value: 0
+      :value: 1
 
 
 
@@ -422,7 +433,7 @@ Package Contents
    perform the transformation. The __call__ method should be overridden in
    subclasses to define the transformation logic.
 
-   Normalize the input data using the provided means and standard deviations.
+   Normalize the input data using the provided means and standard deviations. I assumes the data shape is (C, H, W)
 
    Parameters
    ----------
@@ -537,7 +548,7 @@ Package Contents
    .. py:attribute:: target_w_size
 
 
-.. py:class:: Padding(target_h_size, target_w_size)
+.. py:class:: Padding(target_h_size, target_w_size, padding_mode = 'reflect', padding_value = 0, mask_padding_value = 255)
 
    Bases: :py:obj:`_Transform`
 
@@ -549,6 +560,31 @@ Package Contents
    perform the transformation. The __call__ method should be overridden in
    subclasses to define the transformation logic.
 
+   A transform that pads images and masks to reach target dimensions.
+
+   This transform automatically pads input arrays to the specified target dimensions
+   using different padding strategies. It intelligently determines whether the input
+   is an image or mask based on the data type and applies appropriate padding values.
+   For unsigned integer arrays (typically masks), it uses the mask padding value,
+   while for other arrays (typically images), it uses the regular padding value.
+
+   Parameters
+   ----------
+   target_h_size : int
+       Target height in pixels after padding.
+   target_w_size : int
+       Target width in pixels after padding.
+   padding_mode : str, default="reflect"
+       Padding mode to use. Options include "reflect", "constant", "edge", "wrap".
+       When using "constant", the padding values specified below will be used.
+   padding_value : int, default=0
+       Padding value to use for image data when padding_mode is "constant".
+       Only used for non-unsigned integer arrays.
+   mask_padding_value : int, default=255
+       Padding value to use for mask data when padding_mode is "constant".
+       Only used for unsigned integer arrays. Commonly set to 255 to represent
+       ignore class in segmentation masks.
+
 
    .. py:method:: __call__(x)
 
@@ -558,6 +594,21 @@ Package Contents
 
 
    .. py:method:: __str__()
+
+
+   .. py:attribute:: mask_padding_value
+      :value: 255
+
+
+
+   .. py:attribute:: padding_mode
+      :value: 'reflect'
+
+
+
+   .. py:attribute:: padding_value
+      :value: 0
+
 
 
    .. py:attribute:: target_h_size
@@ -612,16 +663,30 @@ Package Contents
 
    Orchestrate the application of a type of random transform to a list of data, ensuring that the same random state is used for all of them.
 
-   Orchestrate the application of a type of random transform to a list of data, ensuring that the same random state is used for all of them.
+   A random cropping transform that applies the same random crop to multiple data items.
+
+   This transform randomly selects crop coordinates and applies the same crop operation
+   to multiple data items that need to be processed together, ensuring consistency across
+   related data (e.g., image-mask pairs, multiple images with shared labels, etc.).
+   If the crop extends beyond image boundaries, padding is applied using the specified mode.
+   The random crop coordinates are generated once and reused across all data items in the group.
 
    Parameters
    ----------
-   transform : _Transform
-       A transform that will be applied to the input data.
-   num_samples : int
-       The number of samples that will be transformed.
-   seed : Optional[int], optional
-       The seed that will be used to generate the random state, by default None.
+   crop_size : Tuple[int, int]
+       The desired output size for the crop as (height, width) in pixels.
+   num_samples : int, default=1
+       The number of times the same random crop transformation will be applied when called.
+       Set to 2 for data-label pairs, 3 or more for datasets with multiple related items,
+       or 1 for single data items or contrastive learning scenarios.
+   seed : Optional[int], default=None
+       Random seed for reproducible crop selection. If None, uses system randomness.
+   pad_mode : str, default="reflect"
+       Padding mode to use when crop extends beyond image boundaries. Common modes
+       include "reflect", "constant", "edge", "wrap".
+
+
+   .. py:method:: __str__()
 
 
    .. py:attribute:: crop_size
@@ -635,7 +700,7 @@ Package Contents
    .. py:method:: select_transform()
 
 
-.. py:class:: RandomFlip(num_samples = 1, possible_axis = 0, seed = None)
+.. py:class:: RandomFlip(num_samples = 1, possible_axis = 1, prob = 0.5, seed = None)
 
    Bases: :py:obj:`_RandomSyncedTransform`
 
@@ -650,12 +715,22 @@ Package Contents
        The number of samples that will be transformed.
    possible_axis : Union[int, List[int]], optional
        Possible axis to be transformed, will be chosen at random, by default 0
+   prob : float, optional
+       Probability of applying the transform, by default 0.5
    seed : Optional[int], optional
        A seed to ensure deterministic run, by default None
 
 
+   .. py:method:: __str__()
+
+
    .. py:attribute:: possible_axis
-      :value: 0
+      :value: 1
+
+
+
+   .. py:attribute:: prob
+      :value: 0.5
 
 
 
@@ -672,16 +747,30 @@ Package Contents
 
    Orchestrate the application of a type of random transform to a list of data, ensuring that the same random state is used for all of them.
 
-   Orchestrate the application of a type of random transform to a list of data, ensuring that the same random state is used for all of them.
+   A random grayscale conversion transform that applies the same grayscale operation to multiple data items.
+
+   This transform randomly decides whether to convert images to grayscale based on a specified probability.
+   When activated, it applies the same grayscale conversion to all related data items, ensuring consistency.
+   The transform uses different methods for grayscale conversion and can be controlled by probability to
+   create data augmentation effects.
 
    Parameters
    ----------
-   transform : _Transform
-       A transform that will be applied to the input data.
-   num_samples : int
-       The number of samples that will be transformed.
-   seed : Optional[int], optional
-       The seed that will be used to generate the random state, by default None.
+   num_samples : int, default=1
+       The number of times the same random grayscale transformation will be applied when called.
+       Set to 2 for data-label pairs, 3 or more for datasets with multiple related items,
+       or 1 for single data items or contrastive learning scenarios.
+   seed : Optional[int], default=None
+       Random seed for reproducible grayscale selection. If None, uses system randomness.
+   prob : float, default=0.1
+       Probability of applying the grayscale transformation. Must be between 0.0 and 1.0.
+       Higher values make grayscale conversion more likely.
+   method : Literal["average", "luminosity"], default="luminosity"
+       Method for grayscale conversion. "average" computes simple mean of RGB channels,
+       "luminosity" uses weighted average based on human perception of brightness.
+
+
+   .. py:method:: __str__()
 
 
    .. py:attribute:: method
@@ -704,7 +793,12 @@ Package Contents
 
    Orchestrate the application of a type of random transform to a list of data, ensuring that the same random state is used for all of them.
 
-   Randomly applies a rotation to the image with a specified probability.
+   A random rotation transform that applies the same rotation to multiple data items.
+
+   This transform randomly decides whether to apply rotation based on a specified probability.
+   When activated, it samples a rotation angle uniformly from the specified range and applies
+   the same rotation to all related data items, ensuring consistency across image-mask pairs
+   or other related data.
 
    Parameters
    ----------
@@ -712,11 +806,17 @@ Package Contents
        Maximum absolute value of the rotation angle in degrees. The angle is sampled
        uniformly from [-degrees, +degrees].
    prob : float
-       Probability that the rotation will be applied.
-   num_samples : int, optional
-       Number of samples to generate per call (for contrastive learning), default is 1.
-   seed : int, optional
-       Seed for the random number generator, useful for reproducibility.
+       Probability of applying the rotation transformation. Must be between 0.0 and 1.0.
+       Higher values make rotation more likely.
+   num_samples : int, default=1
+       The number of times the same random rotation transformation will be applied when called.
+       Set to 2 for data-label pairs, 3 or more for datasets with multiple related items,
+       or 1 for single data items or contrastive learning scenarios.
+   seed : Optional[int], default=None
+       Random seed for reproducible rotation selection and angle generation. If None, uses system randomness.
+
+
+   .. py:method:: __str__()
 
 
    .. py:attribute:: degrees
@@ -735,16 +835,30 @@ Package Contents
 
    Orchestrate the application of a type of random transform to a list of data, ensuring that the same random state is used for all of them.
 
-   Orchestrate the application of a type of random transform to a list of data, ensuring that the same random state is used for all of them.
+   A random solarization transform that applies the same solarize operation to multiple data items.
+
+   This transform randomly decides whether to apply solarization based on a specified probability.
+   Solarization inverts pixel values above a given threshold, creating a photographic negative effect
+   for bright regions while keeping darker regions unchanged. When activated, it applies the same
+   solarization parameters to all related data items, ensuring consistency.
 
    Parameters
    ----------
-   transform : _Transform
-       A transform that will be applied to the input data.
-   num_samples : int
-       The number of samples that will be transformed.
-   seed : Optional[int], optional
-       The seed that will be used to generate the random state, by default None.
+   num_samples : int, default=1
+       The number of times the same random solarize transformation will be applied when called.
+       Set to 2 for data-label pairs, 3 or more for datasets with multiple related items,
+       or 1 for single data items or contrastive learning scenarios.
+   seed : Optional[int], default=None
+       Random seed for reproducible solarization selection. If None, uses system randomness.
+   threshold : int, default=128
+       Pixel intensity threshold for solarization. Pixels with values above this threshold
+       will be inverted. Valid range is typically 0-255 for 8-bit images.
+   prob : float, default=1.0
+       Probability of applying the solarization transformation. Must be between 0.0 and 1.0.
+       Higher values make solarization more likely.
+
+
+   .. py:method:: __str__()
 
 
    .. py:attribute:: prob
@@ -973,7 +1087,7 @@ Package Contents
    .. py:attribute:: axes
 
 
-.. py:class:: Unsqueeze(axis)
+.. py:class:: Unsqueeze(axis, label_only = False)
 
    Bases: :py:obj:`_Transform`
 
@@ -986,6 +1100,9 @@ Package Contents
    ----------
    axis : int
        The position of the new axis to be added.
+   label_only : bool, optional
+       If True, the transform will only apply to the label (second element) of the input tuple.
+       If False, it will apply to the entire input data, by default False.
 
 
    .. py:method:: __call__(x)
@@ -998,6 +1115,11 @@ Package Contents
 
 
    .. py:attribute:: axis
+
+
+   .. py:attribute:: label_only
+      :value: False
+
 
 
 .. py:class:: _RandomSyncedTransform(num_samples = 1, seed = None)

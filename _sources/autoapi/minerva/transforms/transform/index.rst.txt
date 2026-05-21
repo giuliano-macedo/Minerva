@@ -24,6 +24,7 @@ Classes
    minerva.transforms.transform.PerlinMasker
    minerva.transforms.transform.Repeat
    minerva.transforms.transform.Reshape
+   minerva.transforms.transform.Resize
    minerva.transforms.transform.Rotation
    minerva.transforms.transform.Solarize
    minerva.transforms.transform.Squeeze
@@ -136,6 +137,19 @@ Module Contents
    perform the transformation. The __call__ method should be overridden in
    subclasses to define the transformation logic.
 
+   A transformation wrapper that applies the same transform twice to create contrastive pairs.
+
+   This transform is commonly used in contrastive learning approaches where you need two
+   different augmented versions of the same input. It takes a base transformation and applies
+   it twice independently to the same input, potentially producing different results if the
+   underlying transform includes randomness.
+
+   Parameters
+   ----------
+   transform : _Transform
+       The base transformation to be applied twice. This should be a callable that takes
+       a numpy array and returns a transformed numpy array.
+
 
    .. py:method:: __call__(x)
 
@@ -150,19 +164,14 @@ Module Contents
    .. py:attribute:: transform
 
 
-.. py:class:: Crop(output_size, pad_mode = 'reflect', coords = (0, 0))
+.. py:class:: Crop(output_size, pad_mode = 'reflect', coords = (0, 0), bbox = None)
 
    Bases: :py:obj:`_Transform`
 
 
-   This class is a base class for all transforms. Transforms is just a
-   fancy word for a function that takes an input and returns an output. The
-   input and output can be anything. However, transforms operates over a
-   single sample of data and does not require any additional information to
-   perform the transformation. The __call__ method should be overridden in
-   subclasses to define the transformation logic.
+   Crop an image to a given output size, with optional padding and bounding-box support.
 
-   Crops the input image to a specified output size, with optional padding if needed.
+   Expects inputs in CHW (C, H, W) or 2D (H, W) format.
 
    Parameters
    ----------
@@ -170,25 +179,42 @@ Module Contents
        Desired output size as (height, width).
    pad_mode : str, optional
        Padding mode used if output size is larger than input size. Defaults to 'reflect'.
-   coords : Tuple[int, int], optional
-       Top-left coordinates for the crop box.
+       Valid modes include: 'constant', 'edge', 'linear_ramp', 'maximum', 'mean', 'median',
+       'minimum', 'reflect', 'symmetric', 'wrap', 'empty'.
+   coords : Tuple[float, float], optional
+       Top-left coordinates for the crop box as (row, col).
        Values must go from 0 to 1 indicating the relative position on where the
-       new top-left corner can be set, taking in consideration the new size
-
-   Returns
-   -------
-   np.ndarray
-       Cropped image, padded as necessary.
+       new top-left corner can be set, taking in consideration the new size.
+       Defaults to (0, 0) which corresponds to the top-left corner of the image.
+   bbox : Optional[Tuple[int, int, int, int]], optional
+       If provided, crops the image to the bounding box defined by (y1, y2, x1, x2).
+       If this parameter is set, the `coords` parameter is ignored. Defaults to None.
 
 
    .. py:method:: __call__(image)
 
-      Implement the transformation logic in this method. Usually, the
-      transformation is applied on a single sample of data.
+      Crop the image to the configured output size.
+
+      Parameters
+      ----------
+      image : np.ndarray
+          Input array in CHW (C, H, W) or 2D (H, W) format.
+
+      Returns
+      -------
+      np.ndarray
+          Cropped array. Shape is (C, new_h, new_w) for 3D input or
+          (new_h, new_w) for 2D input. Padded symmetrically if the
+          output size exceeds the input size.
 
 
 
    .. py:method:: __str__()
+
+
+   .. py:attribute:: bbox
+      :value: None
+
 
 
    .. py:attribute:: coords
@@ -204,7 +230,7 @@ Module Contents
 
 
 
-.. py:class:: Flip(axis = 0)
+.. py:class:: Flip(axis = 1)
 
    Bases: :py:obj:`_Transform`
 
@@ -216,7 +242,7 @@ Module Contents
    Parameters
    ----------
    axis : int | List[int], optional
-       One or more axis to flip the input data along, by default 0.
+       One or more axis to flip the input data along, by default 1 (horizontal).
        If a list of axis is provided, the input data is flipped along all the specified axis in the order they are provided.
 
 
@@ -233,7 +259,7 @@ Module Contents
 
 
    .. py:attribute:: axis
-      :value: 0
+      :value: 1
 
 
 
@@ -388,7 +414,7 @@ Module Contents
    perform the transformation. The __call__ method should be overridden in
    subclasses to define the transformation logic.
 
-   Normalize the input data using the provided means and standard deviations.
+   Normalize the input data using the provided means and standard deviations. I assumes the data shape is (C, H, W)
 
    Parameters
    ----------
@@ -503,7 +529,7 @@ Module Contents
    .. py:attribute:: target_w_size
 
 
-.. py:class:: Padding(target_h_size, target_w_size)
+.. py:class:: Padding(target_h_size, target_w_size, padding_mode = 'reflect', padding_value = 0, mask_padding_value = 255)
 
    Bases: :py:obj:`_Transform`
 
@@ -515,6 +541,31 @@ Module Contents
    perform the transformation. The __call__ method should be overridden in
    subclasses to define the transformation logic.
 
+   A transform that pads images and masks to reach target dimensions.
+
+   This transform automatically pads input arrays to the specified target dimensions
+   using different padding strategies. It intelligently determines whether the input
+   is an image or mask based on the data type and applies appropriate padding values.
+   For unsigned integer arrays (typically masks), it uses the mask padding value,
+   while for other arrays (typically images), it uses the regular padding value.
+
+   Parameters
+   ----------
+   target_h_size : int
+       Target height in pixels after padding.
+   target_w_size : int
+       Target width in pixels after padding.
+   padding_mode : str, default="reflect"
+       Padding mode to use. Options include "reflect", "constant", "edge", "wrap".
+       When using "constant", the padding values specified below will be used.
+   padding_value : int, default=0
+       Padding value to use for image data when padding_mode is "constant".
+       Only used for non-unsigned integer arrays.
+   mask_padding_value : int, default=255
+       Padding value to use for mask data when padding_mode is "constant".
+       Only used for unsigned integer arrays. Commonly set to 255 to represent
+       ignore class in segmentation masks.
+
 
    .. py:method:: __call__(x)
 
@@ -524,6 +575,21 @@ Module Contents
 
 
    .. py:method:: __str__()
+
+
+   .. py:attribute:: mask_padding_value
+      :value: 255
+
+
+
+   .. py:attribute:: padding_mode
+      :value: 'reflect'
+
+
+
+   .. py:attribute:: padding_value
+      :value: 0
+
 
 
    .. py:attribute:: target_h_size
@@ -640,6 +706,63 @@ Module Contents
 
 
    .. py:attribute:: shape
+
+
+.. py:class:: Resize(target_h_size, target_w_size, keep_aspect_ratio = False, detect_mask = False)
+
+   Bases: :py:obj:`_Transform`
+
+
+   This class is a base class for all transforms. Transforms is just a
+   fancy word for a function that takes an input and returns an output. The
+   input and output can be anything. However, transforms operates over a
+   single sample of data and does not require any additional information to
+   perform the transformation. The __call__ method should be overridden in
+   subclasses to define the transformation logic.
+
+   A transformation class for resizing images with optional aspect ratio preservation.
+
+   This transform can resize images to specified target dimensions either by direct resizing
+   or by preserving the aspect ratio. When preserving aspect ratio, the transform scales
+   the image using the smaller of the two scaling factors to ensure the image fits within
+   the target dimensions without distortion.
+
+   Parameters
+   ----------
+   target_h_size : int
+       Target height for the resized image in pixels.
+   target_w_size : int
+       Target width for the resized image in pixels.
+   keep_aspect_ratio : bool, default=False
+       If True, preserves the original aspect ratio by scaling with the smaller
+       scaling factor. If False, directly resizes to target dimensions which
+       may distort the image.
+   detect_mask : bool, default=False
+       If True, uses nearest neighbor interpolation for resizing masks (integer types).
+
+
+
+   .. py:method:: __call__(x)
+
+      Implement the transformation logic in this method. Usually, the
+      transformation is applied on a single sample of data.
+
+
+
+   .. py:attribute:: detect_mask
+      :value: False
+
+
+
+   .. py:attribute:: keep_aspect_ratio
+      :value: False
+
+
+
+   .. py:attribute:: target_h_size
+
+
+   .. py:attribute:: target_w_size
 
 
 .. py:class:: Rotation(degrees)
@@ -817,7 +940,7 @@ Module Contents
    .. py:attribute:: axes
 
 
-.. py:class:: Unsqueeze(axis)
+.. py:class:: Unsqueeze(axis, label_only = False)
 
    Bases: :py:obj:`_Transform`
 
@@ -830,6 +953,9 @@ Module Contents
    ----------
    axis : int
        The position of the new axis to be added.
+   label_only : bool, optional
+       If True, the transform will only apply to the label (second element) of the input tuple.
+       If False, it will apply to the entire input data, by default False.
 
 
    .. py:method:: __call__(x)
@@ -842,6 +968,11 @@ Module Contents
 
 
    .. py:attribute:: axis
+
+
+   .. py:attribute:: label_only
+      :value: False
+
 
 
 .. py:class:: _Transform

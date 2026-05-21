@@ -36,6 +36,7 @@ Module Contents
        import torch.nn as nn
        import torch.nn.functional as F
 
+
        class Model(nn.Module):
            def __init__(self) -> None:
                super().__init__()
@@ -101,6 +102,7 @@ Module Contents
        import torch.nn as nn
        import torch.nn.functional as F
 
+
        class Model(nn.Module):
            def __init__(self) -> None:
                super().__init__()
@@ -155,6 +157,7 @@ Module Contents
 
        import torch.nn as nn
        import torch.nn.functional as F
+
 
        class Model(nn.Module):
            def __init__(self) -> None:
@@ -258,6 +261,7 @@ Module Contents
        import torch.nn as nn
        import torch.nn.functional as F
 
+
        class Model(nn.Module):
            def __init__(self) -> None:
                super().__init__()
@@ -285,7 +289,7 @@ Module Contents
    .. py:method:: forward(x)
 
 
-.. py:class:: RnnEncoder(hidden_size, in_channel, encoding_size, cell_type = 'GRU', num_layers = 1, device = 'cpu', dropout = 0, bidirectional = True, permute = False, squeeze = True)
+.. py:class:: RnnEncoder(hidden_size, in_channel, encoding_size, cell_type = 'GRU', num_layers = 1, dropout = 0, bidirectional = True, permute = False, squeeze = True)
 
    Bases: :py:obj:`torch.nn.Module`
 
@@ -299,6 +303,7 @@ Module Contents
 
        import torch.nn as nn
        import torch.nn.functional as F
+
 
        class Model(nn.Module):
            def __init__(self) -> None:
@@ -338,8 +343,6 @@ Module Contents
        Type of RNN cell to use (default is 'GRU'). Options include 'GRU', 'LSTM', etc.
    num_layers : int, optional
        Number of RNN layers (default is 1).
-   device : str, optional
-       Device to run the model on (default is 'cpu'). Options include 'cpu' and 'cuda'.
    dropout : float, optional
        Dropout probability (default is 0.0).
    bidirectional : bool, optional
@@ -352,12 +355,11 @@ Module Contents
 
    Examples
    --------
-   >>> device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
    >>> encoder = RnnEncoder(hidden_size=100, in_channel=6, encoding_size=320,
-                            cell_type='GRU', num_layers=1, device=device,
-                            dropout=0.0, bidirectional=True).to(device)
+                            cell_type='GRU', num_layers=1,
+                            dropout=0.0, bidirectional=True)
    >>> element1 = torch.randn(32, 50, 6)  # Batch size: 32, Time steps: 50, Input channels: 6
-   >>> encoding = encoder(element1.to(device))
+   >>> encoding = encoder(element1)
    >>> print(encoding.shape)
    torch.Size([32, 320])
 
@@ -374,11 +376,6 @@ Module Contents
 
    .. py:attribute:: cell_type
       :value: 'GRU'
-
-
-
-   .. py:attribute:: device
-      :value: 'cpu'
 
 
 
@@ -442,6 +439,7 @@ Module Contents
 
        import torch.nn as nn
        import torch.nn.functional as F
+
 
        class Model(nn.Module):
            def __init__(self) -> None:
@@ -510,6 +508,7 @@ Module Contents
 
        import torch.nn as nn
        import torch.nn.functional as F
+
 
        class Model(nn.Module):
            def __init__(self) -> None:

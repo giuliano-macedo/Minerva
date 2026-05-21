@@ -15,7 +15,7 @@ Classes
 Module Contents
 ---------------
 
-.. py:class:: MinervaDataModule(train_dataset = None, val_dataset = None, test_dataset = None, predict_split = 'test', dataloader_cls = DataLoader, batch_size = 1, num_workers = 0, drop_last = False, additional_train_dataloader_kwargs = None, additional_val_dataloader_kwargs = None, additional_test_dataloader_kwargs = None, shuffle_train = True, name = '')
+.. py:class:: MinervaDataModule(train_dataset = None, val_dataset = None, test_dataset = None, predict_split = 'test', dataloader_cls = DataLoader, batch_size = 1, num_workers = 0, drop_last = False, additional_train_dataloader_kwargs = None, additional_val_dataloader_kwargs = None, additional_test_dataloader_kwargs = None, shuffle_train = True, name = '', additional_describes = None)
 
    Bases: :py:obj:`lightning.LightningDataModule`
 
@@ -99,6 +99,8 @@ Module Contents
        dataloader is shuffled.
    name : str, optional
        Name of the data module, by default ""
+   additional_describes : DataModuleDescriptor, optional
+       A class that you can apply custom check when load MinervaDataModule.
 
 
    .. py:method:: __repr__()
@@ -167,6 +169,11 @@ Module Contents
 
 
    .. py:attribute:: _val_dataset
+      :value: None
+
+
+
+   .. py:attribute:: additional_describes
       :value: None
 
 

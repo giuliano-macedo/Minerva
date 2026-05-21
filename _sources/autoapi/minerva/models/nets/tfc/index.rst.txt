@@ -62,7 +62,7 @@ Module Contents
    .. py:attribute:: module
 
 
-.. py:class:: TFC_Backbone(input_channels, TS_length, single_encoding_size = 128, transform = None, time_encoder = None, frequency_encoder = None, time_projector = None, frequency_projector = None, adapter = None, batch_1_correction = False)
+.. py:class:: TFC_Backbone(input_channels, TS_length, single_encoding_size = 128, transform = None, time_encoder = None, frequency_encoder = None, time_projector = None, frequency_projector = None, adapter = None, batch_1_correction = False, jitter_ratio = 0.08, jitter_function = None)
 
    Bases: :py:obj:`torch.nn.Module`
 
@@ -98,6 +98,10 @@ Module Contents
        If True, the batch normalization is ignored when the batch size is 1,
        If False, a runtime error is raised when the batch size is 1
        Standard is False
+   - jitter_ratio: Optional[float]
+       The ratio of the jittering transformation. If None, the default value is used.
+   - jitter_function: Optional[Callable[[torch.Tensor], torch.Tensor]]
+       A custom jittering function. If None, the default proportional jittering function is used.
 
 
 
