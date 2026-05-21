@@ -189,7 +189,7 @@ class SimpleLightningPipeline(Pipeline):
         for metric_name, metric in metrics.items():
             final_results = []
             for i, (y_i, y_hat_i) in enumerate(zip(y, y_hat)):
-                res = metric(y_i, y_hat_i).float().item()
+                res = metric(y_hat_i, y_i).float().item()
                 final_results.append(res)
             results[metric_name] = final_results
 
@@ -315,7 +315,7 @@ class SimpleLightningPipeline(Pipeline):
         metrics = dict(metrics)
 
         # Save metrics to a YAML file
-        if self._save_pipeline_info:
+        if self._save_run_status:
             yaml_path = self._log_dir / f"metrics_{self.pipeline_id}.yaml"
             with open(yaml_path, "w") as f:
                 yaml.dump(metrics, f)

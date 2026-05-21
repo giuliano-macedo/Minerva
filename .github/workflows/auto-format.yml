@@ -1,0 +1,58 @@
+name: Auto Format
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths-ignore:
+      - "*.md"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/PULL_REQUEST_TEMPLATE/**"
+      - "LICENSE"
+
+permissions:
+  contents: write
+
+jobs:
+  auto-format:
+    runs-on: ubuntu-latest
+    # Skip for fork PRs — GITHUB_TOKEN lacks write access to fork branches
+    if: github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - name: Checkout PR Branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
+        with:
+          python-version: "3.10"
+
+      - name: Get last commit message
+        id: last_commit
+        run: echo "message=$(git log -1 --pretty=%s)" >> $GITHUB_OUTPUT
+
+      - name: Run black formatter
+        run: uv run --frozen --extra dev black minerva tests
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit formatted code
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          COMMIT_MSG: ${{ steps.last_commit.outputs.message }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "formatted: $COMMIT_MSG"
+          git push
