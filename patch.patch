@@ -1,0 +1,13 @@
+diff --git a/tests/models/ssl/test_fastsiam.py b/tests/models/ssl/test_fastsiam.py
+index 746bb6b..ce6685e 100644
+--- a/tests/models/ssl/test_fastsiam.py
++++ b/tests/models/ssl/test_fastsiam.py
+@@ -85,7 +85,7 @@ class TestFastSiam(unittest.TestCase):
+
+     def test_unexpected_k_error(self):
+         batch = tuple([torch.rand(4, 3, 224, 224) for _ in range(2)])
+-        with self.assertRaisesRegex(RuntimeError, r"expected self\.k\+1=3 views"):
++        with self.assertRaisesRegex(RuntimeError, r"expected 3 views, but got 2, is your Dataset class yielding k\+1 views\?"):
+             self.model.training_step(batch, 0)
+
+     def test_single_step_k_equals_3(self):
